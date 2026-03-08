@@ -13,54 +13,143 @@ enum Role {
 }
 
 enum RequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  IN_PROGRESS
+  WAITING_FOR_USER
+  COMPLETED
+  REJECTED
   PENDING
   IN_REVIEW
   APPROVED
-  REJECTED
-  COMPLETED
+}
+
+enum ServiceRequestCategory {
+  WEBSITE_DEVELOPMENT
+  MOBILE_APP_DEVELOPMENT
+  AI_SOLUTION
+  SAAS_PLATFORM
+  UI_UX_DESIGN
+  TECHNICAL_SUPPORT
+  OTHER
+}
+
+enum ServiceRequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectCategory {
+  WEB
+  MOBILE
+  AI
+  SAAS
+}
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum NotificationType {
+  CONTACT_MESSAGE
+  SUPPORT_REQUEST
+  SUPPORT_REPLY
+  SERVICE_REQUEST_CREATED
+  SERVICE_REQUEST_REPLY
+  SERVICE_REQUEST_STATUS
+  PROJECT_UPDATE
+  SYSTEM_ALERT
+  USER_REGISTERED
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }
 
 model User {
-  id              String           @id @default(uuid())
-  name            String
-  email           String           @unique
-  password        String
-  role            Role             @default(USER)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  serviceRequests ServiceRequest[]
-  messages        Message[]
-  blogPosts       BlogPost[]
+  id                            String                            @id @default(uuid())
+  name                          String
+  email                         String                            @unique
+  password                      String
+  role                          Role                              @default(USER)
+  isActive                      Boolean                           @default(true)
+  lastLoginAt                   DateTime?
+  createdAt                     DateTime                          @default(now())
+  updatedAt                     DateTime                          @updatedAt
+  serviceRequests               ServiceRequest[]
+  messages                      Message[]                         @relation("LegacyUserMessages")
+  serviceRequestMessages        ServiceRequestMessage[]
+  serviceRequestAttachments     ServiceRequestAttachment[]
+  serviceRequestMessageFiles    ServiceRequestMessageAttachment[]
+  serviceRequestTimelineActions ServiceRequestTimeline[]          @relation("ServiceRequestTimelineActor")
+  blogPosts                     BlogPost[]
+  createdProjects               Project[]                         @relation("ProjectCreator")
+  notifications                 Notification[]                    @relation("UserNotifications")
+  contactMessages               ContactMessage[]
+  supportTickets                SupportTicket[]
+  supportReplies                SupportReply[]
+  activities                    UserActivity[]
 }
 
 model ServiceRequest {
-  id          String        @id @default(uuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceType String
-  details     String
-  budget      String?
-  timeline    String?
-  fileUrl     String?
-  status      RequestStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  messages    Message[]
+  id              String                     @id @default(uuid())
+  userId          String
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String                     @default("Service Request")
+  category        ServiceRequestCategory     @default(OTHER)
+  priority        ServiceRequestPriority     @default(MEDIUM)
+  serviceType     String
+  details         String
+  budget          String?
+  timeline        String?
+  fileUrl         String?
+  status          RequestStatus              @default(SUBMITTED)
+  adminLastViewed DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  legacyMessages  Message[]                  @relation("LegacyServiceRequestMessages")
+  attachments     ServiceRequestAttachment[]
+  messages        ServiceRequestMessage[]
+  timelineEvents  ServiceRequestTimeline[]
+
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+  @@index([category, priority])
 }
 
 model Project {
-  id            String   @id @default(uuid())
-  title         String
-  category      String
-  description   String
-  imageUrl      String?
-  demoUrl       String?
-  githubUrl     String?
-  technologies  String[]
-  problemSolved String?
-  impactMetrics String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String          @id @default(uuid())
+  title               String
+  slug                String          @unique
+  category            ProjectCategory
+  shortDescription    String
+  detailedDescription String
+  technologies        String[]
+  coverImageUrl       String?
+  demoVideoUrl        String?
+  clientName          String?
+  completionDate      DateTime?
+  liveLink            String?
+  repositoryLink      String?
+  status              ProjectStatus   @default(DRAFT)
+  createdById         String?
+  createdBy           User?           @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  media               ProjectMedia[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 }
 
 model Testimonial {
@@ -73,13 +162,13 @@ model Testimonial {
 }
 
 model Message {
-  id               String         @id @default(uuid())
-  requestId        String
-  request          ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  senderId         String
-  sender           User           @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  text             String
-  createdAt        DateTime       @default(now())
+  id        String         @id @default(uuid())
+  requestId String
+  request   ServiceRequest @relation("LegacyServiceRequestMessages", fields: [requestId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User           @relation("LegacyUserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime       @default(now())
 }
 
 model BlogPost {
@@ -92,4 +181,130 @@ model BlogPost {
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model ProjectMedia {
+  id        String    @id @default(uuid())
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      MediaType
+  url       String
+  fileName  String
+  fileSize  Int?
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  message   String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  title       String
+  message     String
+  type        NotificationType
+  isRead      Boolean          @default(false)
+  forAdmin    Boolean          @default(false)
+  recipientId String?
+  recipient   User?            @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: SetNull)
+  entityType  String?
+  entityId    String?
+  createdAt   DateTime         @default(now())
+}
+
+model SupportTicket {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String
+  status    SupportStatus  @default(OPEN)
+  replies   SupportReply[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model SupportReply {
+  id        String        @id @default(uuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime      @default(now())
+}
+
+model UserActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+model ServiceRequestAttachment {
+  id         String         @id @default(uuid())
+  requestId  String
+  request    ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploaderId String
+  uploader   User           @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  type       MediaType
+  url        String
+  fileName   String
+  fileSize   Int?
+  createdAt  DateTime       @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+model ServiceRequestMessage {
+  id          String                            @id @default(uuid())
+  requestId   String
+  request     ServiceRequest                    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User                              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  message     String
+  createdAt   DateTime                          @default(now())
+  attachments ServiceRequestMessageAttachment[]
+
+  @@index([requestId, createdAt])
+}
+
+model ServiceRequestMessageAttachment {
+  id         String                @id @default(uuid())
+  messageId  String
+  message    ServiceRequestMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploaderId String
+  uploader   User                  @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  type       MediaType
+  url        String
+  fileName   String
+  fileSize   Int?
+  createdAt  DateTime              @default(now())
+
+  @@index([messageId, createdAt])
+}
+
+model ServiceRequestTimeline {
+  id         String         @id @default(uuid())
+  requestId  String
+  request    ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      User?          @relation("ServiceRequestTimelineActor", fields: [actorId], references: [id], onDelete: SetNull)
+  eventType  String
+  message    String
+  statusFrom RequestStatus?
+  statusTo   RequestStatus?
+  createdAt  DateTime       @default(now())
+
+  @@index([requestId, createdAt])
 }

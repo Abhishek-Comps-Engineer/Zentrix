@@ -1,23 +1,47 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { PrismaClient } from "@prisma/client"
 import * as z from "zod"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
+import { createAdminNotification } from "@/lib/notifications"
+import { logUserActivity } from "@/lib/activity"
+import { consumeRateLimit, getRequestIp } from "@/lib/rate-limit"
 
 const registerSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
-    password: z.string().min(6),
+    password: z.string().min(8),
 })
+
+const REGISTER_LIMIT = 5
+const REGISTER_WINDOW_MS = 60 * 60 * 1000
 
 export async function POST(req: Request) {
     try {
+        const rateLimit = consumeRateLimit(
+            `register:${getRequestIp(req)}`,
+            REGISTER_LIMIT,
+            REGISTER_WINDOW_MS
+        )
+
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: `Too many registration attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+                },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+                }
+            )
+        }
+
         const body = await req.json()
         const { name, email, password } = registerSchema.parse(body)
+        const normalizedEmail = email.toLowerCase().trim()
 
         const existingUser = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         })
 
         if (existingUser) {
@@ -32,12 +56,20 @@ export async function POST(req: Request) {
         const user = await prisma.user.create({
             data: {
                 name,
-                email,
+                email: normalizedEmail,
                 password: hashedPassword,
-                // The first user could be an ADMIN or handled through a seed script. We default to USER.
             },
             select: { id: true, name: true, email: true, role: true },
         })
+
+        await createAdminNotification(
+            "USER_REGISTERED",
+            "New user registered",
+            `${user.name} (${user.email}) created an account.`,
+            "USER",
+            user.id
+        )
+        await logUserActivity(user.id, "REGISTER", { email: user.email })
 
         return NextResponse.json(
             { success: true, message: "User registered successfully.", user },

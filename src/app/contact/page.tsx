@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -15,33 +16,58 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { MapPin, Mail, Phone } from "lucide-react"
+import { Mail, Phone, MessageCircle } from "lucide-react"
 
 const formSchema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
     email: z.string().email({ message: "Invalid email address." }),
-    subject: z.string().min(5, { message: "Subject must be at least 5 characters." }),
+    phone: z
+        .string()
+        .min(7, { message: "Phone number is required." })
+        .max(20, { message: "Phone number is too long." }),
     message: z.string().min(10, { message: "Message must be at least 10 characters." }),
+    website: z.string().optional(),
 })
 
 export default function ContactPage() {
+    const [loading, setLoading] = useState(false)
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
             email: "",
-            subject: "",
+            phone: "",
             message: "",
+            website: "",
         },
     })
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        // API call placeholder
-        console.log(values)
-        toast("Message Sent!", {
-            description: "We've received your message and will get back to you shortly.",
-        })
-        form.reset()
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        setLoading(true)
+        try {
+            const res = await fetch("/api/contact", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(values),
+            })
+            const data = await res.json()
+
+            if (!res.ok) {
+                toast("Error", {
+                    description: data.message || "Failed to send message.",
+                })
+                return
+            }
+
+            toast("Message Sent", {
+                description: "We've received your message and will respond soon.",
+            })
+            form.reset()
+        } catch {
+            toast("Error", { description: "Network error. Please try again." })
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -58,23 +84,31 @@ export default function ContactPage() {
                     <div>
                         <h3 className="text-2xl font-bold mb-6">Contact Information</h3>
                         <div className="space-y-4 text-muted-foreground">
-                            <div className="flex items-center space-x-4">
-                                <MapPin className="text-primary h-6 w-6" />
-                                <span>123 Innovation Drive, Tech City, TX 75001</span>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <Mail className="text-primary h-6 w-6" />
-                                <span>hello@zentrix.dev</span>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <Phone className="text-primary h-6 w-6" />
-                                <span>+1 (555) 123-4567</span>
+                            <div className="flex flex-wrap gap-3">
+                                <Button asChild variant="outline">
+                                    <a href="tel:7058746797">
+                                        <Phone className="mr-2 h-4 w-4" />
+                                        Call 7058746797
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <a
+                                        href="https://wa.me/917058746797"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <MessageCircle className="mr-2 h-4 w-4" />
+                                        WhatsApp
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <a href="mailto:hello@zentrix.dev">
+                                        <Mail className="mr-2 h-4 w-4" />
+                                        Email
+                                    </a>
+                                </Button>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="w-full h-64 bg-muted rounded-xl border flex items-center justify-center text-muted-foreground">
-                        [Google Maps Placeholder]
                     </div>
                 </div>
 
@@ -110,12 +144,12 @@ export default function ContactPage() {
                             />
                             <FormField
                                 control={form.control}
-                                name="subject"
+                                name="phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Subject</FormLabel>
+                                        <FormLabel>Phone</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Project Inquiry" {...field} />
+                                            <Input placeholder="7058746797" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -138,7 +172,22 @@ export default function ContactPage() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full">Send Message</Button>
+                            <FormField
+                                control={form.control}
+                                name="website"
+                                render={({ field }) => (
+                                    <FormItem className="hidden">
+                                        <FormLabel>Website</FormLabel>
+                                        <FormControl>
+                                            <Input tabIndex={-1} autoComplete="off" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? "Sending..." : "Send Message"}
+                            </Button>
                         </form>
                     </Form>
                 </div>

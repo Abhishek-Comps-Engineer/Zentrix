@@ -12,8 +12,9 @@ export default function GlobalError({
     reset: () => void
 }) {
     useEffect(() => {
-        // Log the error to an error reporting service
-        console.error("Global Error Boundary caught:", error)
+        if (typeof globalThis.reportError === "function") {
+            globalThis.reportError(error)
+        }
     }, [error])
 
     return (

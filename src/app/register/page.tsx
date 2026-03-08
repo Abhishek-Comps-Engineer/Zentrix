@@ -54,7 +54,7 @@ export default function RegisterPage() {
             } else {
                 toast("Error", { description: data.message || "Failed to register" })
             }
-        } catch (error) {
+        } catch {
             toast("Error", { description: "Something went wrong" })
         } finally {
             setLoading(false)

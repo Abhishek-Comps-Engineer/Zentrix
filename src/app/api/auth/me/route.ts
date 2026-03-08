@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { jwtVerify } from "jose"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
+import { getSessionUser } from "@/lib/session"
+import { isAuthConfigError } from "@/lib/auth"
 
-const prisma = new PrismaClient()
-
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const token = (await cookies()).get("token")?.value
-
-        if (!token) {
+        const session = await getSessionUser()
+        if (!session) {
             return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
         }
 
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback_secret_do_not_use_in_prod")
-        const { payload } = await jwtVerify(token, secret)
-
         const user = await prisma.user.findUnique({
-            where: { id: payload.userId as string },
+            where: { id: session.userId },
             select: { id: true, name: true, email: true, role: true }
         })
 
@@ -27,6 +21,12 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ success: true, user }, { status: 200 })
     } catch (error) {
+        if (isAuthConfigError(error)) {
+            return NextResponse.json(
+                { success: false, message: "Server authentication is misconfigured." },
+                { status: 500 }
+            )
+        }
         return NextResponse.json({ success: false, message: "Invalid token" }, { status: 401 })
     }
 }

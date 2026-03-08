@@ -1,0 +1,35 @@
+import { NextResponse } from "next/server"
+import { ZodError } from "zod"
+
+export function handleApiError(error: unknown) {
+  if (error instanceof ZodError) {
+    return NextResponse.json(
+      { success: false, message: "Validation error", errors: error.issues },
+      { status: 400 }
+    )
+  }
+
+  if (error instanceof Error) {
+    if (error.message === "UNAUTHORIZED") {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    if (error.message === "FORBIDDEN") {
+      return NextResponse.json(
+        { success: false, message: "Forbidden" },
+        { status: 403 }
+      )
+    }
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.error("API route error:", error)
+  }
+
+  return NextResponse.json(
+    { success: false, message: "Internal server error" },
+    { status: 500 }
+  )
+}

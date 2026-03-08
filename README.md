@@ -28,6 +28,7 @@ Create a `.env` file based on the `.env.example` template:
 cp .env.example .env
 ```
 Make sure to put your actual PostgreSQL `DATABASE_URL` and a secure `JWT_SECRET`.
+For production contact/support emails, also configure SMTP values from `.env.example`.
 
 ### 3. Initialize the Database
 
@@ -47,6 +48,41 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### 5. Create a Dedicated Admin Account
+
+Do not promote client accounts to admin. Create a separate admin user:
+
+```bash
+# PowerShell
+$env:ADMIN_EMAIL="admin@yourcompany.com"
+$env:ADMIN_PASSWORD="replace_with_strong_password"
+$env:ADMIN_NAME="Platform Admin" # optional
+npm run create-admin
+Remove-Item Env:ADMIN_PASSWORD
+Remove-Item Env:ADMIN_EMAIL
+Remove-Item Env:ADMIN_NAME
+```
+
+`ADMIN_PASSWORD` must be at least 12 characters.
+
+## Production Security Notes
+
+- `JWT_SECRET` is mandatory and must be at least 32 characters.
+- Login API includes rate limiting (5 failed attempts per 15 minutes by IP + email).
+- Prisma uses a shared singleton client to reduce connection churn.
+- Contact and support notifications can send admin email via SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `ADMIN_EMAIL`).
+
+## Implemented Modules
+
+- Admin user management: search, filter, activate/deactivate, delete.
+- Admin project management: create/delete, status updates, media upload endpoint with validation.
+- Admin notification center and support queue management.
+- Contact form persistence + admin notification + optional admin email alert.
+- User notification center (mark read / clear read).
+- Support ticket system with user/admin replies.
+- Portfolio is database-driven with project detail pages.
+- Legal pages: `/privacy` and `/terms`.
 
 ## 📁 Project Structure
 

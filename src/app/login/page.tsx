@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -25,7 +25,7 @@ const formSchema = z.object({
 })
 
 export default function LoginPage() {
-    const router = useRouter()
+    const searchParams = useSearchParams()
     const [loading, setLoading] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -48,12 +48,18 @@ export default function LoginPage() {
 
             if (res.ok) {
                 toast("Success", { description: "Logged in successfully." })
-                router.push(data.user.role === "ADMIN" ? "/admin" : "/dashboard")
-                router.refresh()
+                const callbackUrl = searchParams.get("callbackUrl")
+                const destination =
+                    data.user.role === "ADMIN"
+                        ? "/admin"
+                        : callbackUrl && callbackUrl.startsWith("/")
+                            ? callbackUrl
+                            : "/dashboard"
+                window.location.assign(destination)
             } else {
                 toast("Error", { description: data.message || "Failed to login" })
             }
-        } catch (error) {
+        } catch {
             toast("Error", { description: "Something went wrong" })
         } finally {
             setLoading(false)
