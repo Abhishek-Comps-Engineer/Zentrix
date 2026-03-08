@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Avieno - Software Company Platform
 
-## Getting Started
+A complete, production-ready full-stack application built for a software development agency. Features public landing pages, client request dashboards, and an admin management panel.
 
-First, run the development server:
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Shadcn UI + Framer Motion
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Auth**: Custom JWT Auth + HTTP-only Cookies
+- **Forms**: React Hook Form + Zod
+
+## 📦 Setup & Installation
+
+### 1. Clone the repository and install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file based on the `.env.example` template:
+
+```bash
+cp .env.example .env
+```
+Make sure to put your actual PostgreSQL `DATABASE_URL` and a secure `JWT_SECRET`.
+
+### 3. Initialize the Database
+
+Push the Prisma schema to your database and generate the Prisma client:
+
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+*(Note: In production, consider using `npx prisma migrate deploy` after creating migrations with `npx prisma migrate dev`)*
+
+### 4. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/src/app/api`: Next.js REST API routes.
+- `/src/app/(admin)`: Protected admin dashboard.
+- `/src/app/(protected)`: Protected client dashboard.
+- `/src/components`: Reusable UI components from Shadcn UI & custom components.
+- `/prisma`: Database schema and migrations.
 
-## Learn More
+## 🐳 Docker Deployment
 
-To learn more about Next.js, take a look at the following resources:
+The project includes a multi-stage `Dockerfile` optimized for Next.js standalone output.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To build the Docker image:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker build -t avieno-platform .
+```
 
-## Deploy on Vercel
+To run the container:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+docker run -p 3000:3000 -e DATABASE_URL="your-db-url" -e JWT_SECRET="your-secret" avieno-platform
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*(Note: Make sure to update your `next.config.mjs` to set `output: 'standalone'` if using the Dockerfile).*
