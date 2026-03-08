@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Hexagon, Menu } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -162,7 +162,7 @@ export function Navbar() {
                         {isLoggedIn && (
                             <>
                                 <Button variant="outline" asChild>
-                                    <Link href={dashboardHref}>Dashboard</Link>
+                                    <Link href={dashboardHref}>Client Panel</Link>
                                 </Button>
                                 <DropdownMenu
                                     open={profileMenuOpen}
@@ -215,7 +215,8 @@ export function Navbar() {
                                 <span className="sr-only">Toggle Menu</span>
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="pr-0">
+                        <SheetContent side="left" className="p-5">
+                            <SheetTitle className="sr-only">Mobile navigation menu</SheetTitle>
                             <Link
                                 href="/"
                                 className="flex items-center"
@@ -246,7 +247,7 @@ export function Navbar() {
                                     </Link>
                                 )}
                             </div>
-                            <div className="flex flex-col space-y-4 pr-6">
+                            <div className="flex flex-col space-y-4">
                                 {!isLoggedIn && (
                                     <Button variant="outline" asChild className="w-full justify-start">
                                         <Link href="/login" onClick={() => setIsOpen(false)}>
